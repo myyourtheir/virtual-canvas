@@ -1,3 +1,20 @@
+import * as d3 from "d3";
+type DrawPathParams<T extends number[] | Record<string, number>> = {
+  data: T[];
+  xField: T extends number[] ? number : keyof T;
+  yField: T extends number[] ? number : keyof T;
+  color: string;
+  thickness: number;
+};
+
+type RenderToParams = {
+  context: CanvasRenderingContext2D;
+  viewportX: number;
+  viewportY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
 export class VirtualCanvas {
   private width: number;
   private height: number;
@@ -59,25 +76,78 @@ export class VirtualCanvas {
     return null;
   }
 
-  draw(callback: (ctx: OffscreenCanvasRenderingContext2D) => void) {
+  drawPath<T extends number[] | Record<string, number>>({
+    data,
+    xField,
+    yField,
+    color,
+    thickness,
+  }: DrawPathParams<T>) {
+    const lineFn = d3
+      .line<T>()
+      .x((d) => d[xField as keyof T] as number)
+      .y((d) => d[yField as keyof T] as number)
+      .curve(d3.curveLinear);
+    const chunks = data.reduce((acc, item) => {
+      const itemX = item[xField as keyof T] as number;
+      const itemY = item[yField as keyof T] as number;
+      const tileXIndex = Math.floor(itemX / this.tileSize);
+      const tileYIndex = Math.floor(itemY / this.tileSize);
+      const key = [tileYIndex, tileXIndex].join(",");
+      const existingKeyValue = acc.get(key);
+
+      let preparedItem: Record<string, number> | number[] = {
+        [xField]: itemX - tileXIndex * this.tileSize,
+        [yField]: itemY - tileYIndex * this.tileSize,
+      };
+      if (Array.isArray(item)) {
+        preparedItem = Object.values(preparedItem);
+      }
+
+      if (!existingKeyValue) {
+        return acc.set(key, [preparedItem as T]);
+      }
+      existingKeyValue.push(preparedItem as T);
+      return acc;
+    }, new Map<string, T[]>());
+
+    chunks.forEach((value, key) => {
+      const [y, x] = key.split(",").map(Number);
+      const tile = this.tiles[y][x];
+      const path = new Path2D(lineFn(value) ?? undefined);
+      tile.ctx.strokeStyle = color;
+      tile.ctx.lineWidth = thickness;
+      tile.ctx.stroke(path);
+    });
+  }
+
+  draw(
+    callback: (
+      ctx: OffscreenCanvasRenderingContext2D,
+      rowIndex: number,
+      colIndex: number
+    ) => void
+  ) {
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         const tile = this.tiles[y][x];
         tile.ctx.save();
+
         tile.ctx.clearRect(0, 0, tile.width, tile.height);
-        callback(tile.ctx);
+
+        callback(tile.ctx, y, x);
         tile.ctx.restore();
       }
     }
   }
 
-  renderTo(
-    context: CanvasRenderingContext2D,
-    viewportX: number,
-    viewportY: number,
-    viewportWidth: number,
-    viewportHeight: number
-  ) {
+  renderTo({
+    context,
+    viewportX,
+    viewportY,
+    viewportWidth,
+    viewportHeight,
+  }: RenderToParams) {
     context.clearRect(0, 0, viewportWidth, viewportHeight);
 
     const startX = Math.max(0, Math.floor(viewportX / this.tileSize));
@@ -133,5 +203,45 @@ export class VirtualCanvas {
         tile.ctx.clearRect(0, 0, tile.width, tile.height);
       }
     }
+  }
+
+  download(
+    filename: string = "canvas",
+    quality: number = 1,
+    type: string = "image/png"
+  ) {
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = this.width;
+    tempCanvas.height = this.height;
+    const tempCtx = tempCanvas.getContext("2d");
+
+    if (!tempCtx) {
+      console.error("Could not create temporary canvas context");
+      return;
+    }
+
+    for (let y = 0; y < this.rows; y++) {
+      for (let x = 0; x < this.cols; x++) {
+        const tile = this.tiles[y][x];
+        tempCtx.drawImage(
+          tile.canvas,
+          0,
+          0,
+          tile.width,
+          tile.height,
+          tile.x,
+          tile.y,
+          tile.width,
+          tile.height
+        );
+      }
+    }
+
+    const link = document.createElement("a");
+    link.download = `${filename}.${type === "image/png" ? "png" : "jpg"}`;
+    link.href = tempCanvas.toDataURL(type, quality);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

@@ -1,5 +1,15 @@
 .App {
+  display: flex;
+  gap: 10px;
+}
+
+.wrapper {
   overflow: hidden;
+}
+
+.download {
+  width: fit-content;
+  height: 20px;
 }
 
 .container {
@@ -9,9 +19,4 @@
 
   position: absolute;
   top: 0;
-}
-
-.hugeElement {
-  height: 10000px;
-  width: 500px;
 }
