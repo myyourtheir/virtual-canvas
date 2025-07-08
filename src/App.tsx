@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { VirtualCanvas } from "./VirtualCanvas";
-import "./styles.css";
 import { pathData } from "./pathData";
+import * as d3 from "d3";
+import "./styles.css";
 
 const VIEWPORT_WIDTH = 500;
 const VIEWPORT_HEIGHT = 500;
@@ -40,13 +41,23 @@ export default function App() {
     //   ctx.fillStyle = "red";
     //   ctx.fillRect(150, 700, 200, 600);
     // });
+    const lineFn = d3
+      .line<number[]>()
+      .x((d) => d[1])
+      .y((d) => d[0])
+      .curve(d3.curveLinear);
+
     pathData.forEach((data, i) => {
       virtualCanvas.drawPath({
         data,
         xField: 1,
         yField: 0,
-        color: i % 2 === 0 ? "red" : "blue",
-        thickness: 1,
+        callback: ({ ctx, value }) => {
+          const path = new Path2D(lineFn(value) ?? undefined);
+          ctx.strokeStyle = i % 2 === 0 ? "red" : "blue";
+          ctx.lineWidth = 1;
+          ctx.stroke(path);
+        },
       });
     });
     if (!displayCtx) return;
