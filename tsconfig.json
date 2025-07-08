@@ -1,14 +1,23 @@
 {
-    "include": [
-        "./src/**/*"
-    ],
     "compilerOptions": {
-        "strict": true,
+        "target": "ES2020",
+        "module": "ESNext",
+        "lib": ["dom", "dom.iterable", "esnext"],
+        "allowJs": true,
+        "skipLibCheck": true,
         "esModuleInterop": true,
-        "lib": [
-            "dom",
-            "es2015"
-        ],
-        "jsx": "react-jsx"
-    }
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "moduleResolution": "Bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noImplicitReturns": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "types": ["node"],
+        "plugins": [{"name": "typescript-plugin-css-modules"}]
+      },
+      "include": ["src"]
 }
