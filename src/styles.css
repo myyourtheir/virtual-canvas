@@ -1,0 +1,17 @@
+.App {
+  overflow: hidden;
+}
+
+.container {
+  height: 500px;
+  width: 500px;
+  overflow: hidden auto;
+
+  position: absolute;
+  top: 0;
+}
+
+.hugeElement {
+  height: 10000px;
+  width: 500px;
+}
