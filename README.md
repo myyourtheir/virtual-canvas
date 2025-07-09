@@ -1,2 +1,2 @@
 # virtual-canvas
-Created with CodeSandbox
+solution to avoid sad face canvas exception
