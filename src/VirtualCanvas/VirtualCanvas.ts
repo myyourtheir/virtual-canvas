@@ -1,5 +1,4 @@
-import * as d3 from "d3";
-import { VCCore } from "./core";
+import {VCCore} from './core';
 
 type DrawPathParams<T extends number[] | Record<string, number>> = {
   data: T[];
@@ -8,6 +7,8 @@ type DrawPathParams<T extends number[] | Record<string, number>> = {
   callback: (params: {
     value: T[];
     ctx: OffscreenCanvasRenderingContext2D;
+    colIndex: number;
+    rowIndex: number;
   }) => void;
 };
 
@@ -26,7 +27,7 @@ export class VirtualCanvas extends VCCore {
 
   /**
    * parses data to chunks for specific overlay canvas and applies callback for each chunk
-   * normalized value and actual ctx are params passed to callback
+   * normalized value, actual ctx and row/col index are params passed to callback
    * */
   drawPath<T extends number[] | Record<string, number>>({
     data,
@@ -34,54 +35,38 @@ export class VirtualCanvas extends VCCore {
     yField,
     callback,
   }: DrawPathParams<T>) {
-    const chunks = this.getPathDataChunks({ data, xField, yField });
+    const chunks = this.getPathDataChunks({data, xField, yField});
 
     chunks.forEach((value, key) => {
-      const [tileRowIndex, tileColIndex] = key.split(",").map(Number);
-      const tile = this.tiles[tileRowIndex][tileColIndex];
-      callback({ value, ctx: tile.ctx });
+      const [rowIndex, colIndex] = key.split(',').map(Number);
+      const tile = this.tiles[rowIndex][colIndex];
+      callback({value, ctx: tile.ctx, rowIndex, colIndex});
     });
   }
 
   drawForEach(
-    callback: (
-      ctx: OffscreenCanvasRenderingContext2D,
-      rowIndex: number,
-      colIndex: number
-    ) => void
+    callback: (params: {
+      ctx: OffscreenCanvasRenderingContext2D;
+      rowIndex: number;
+      colIndex: number;
+    }) => void
   ) {
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         const tile = this.tiles[y][x];
-        tile.ctx.save();
 
-        tile.ctx.clearRect(0, 0, tile.width, tile.height);
-
-        callback(tile.ctx, y, x);
-        tile.ctx.restore();
+        callback({ctx: tile.ctx, rowIndex: y, colIndex: x});
       }
     }
   }
 
-  renderTo({
-    context,
-    viewportX,
-    viewportY,
-    viewportWidth,
-    viewportHeight,
-  }: RenderToParams) {
+  renderTo({context, viewportX, viewportY, viewportWidth, viewportHeight}: RenderToParams) {
     context.clearRect(0, 0, viewportWidth, viewportHeight);
 
     const startX = Math.max(0, Math.floor(viewportX / this.tileSize));
     const startY = Math.max(0, Math.floor(viewportY / this.tileSize));
-    const endX = Math.min(
-      this.cols - 1,
-      Math.floor((viewportX + viewportWidth) / this.tileSize)
-    );
-    const endY = Math.min(
-      this.rows - 1,
-      Math.floor((viewportY + viewportHeight) / this.tileSize)
-    );
+    const endX = Math.min(this.cols - 1, Math.floor((viewportX + viewportWidth) / this.tileSize));
+    const endY = Math.min(this.rows - 1, Math.floor((viewportY + viewportHeight) / this.tileSize));
 
     for (let y = startY; y <= endY; y++) {
       for (let x = startX; x <= endX; x++) {
@@ -127,18 +112,14 @@ export class VirtualCanvas extends VCCore {
     }
   }
 
-  download(
-    filename: string = "canvas",
-    quality: number = 1,
-    type: string = "image/png"
-  ) {
-    const tempCanvas = document.createElement("canvas");
+  download(filename: string = 'canvas', quality: number = 1, type: string = 'image/png') {
+    const tempCanvas = document.createElement('canvas');
     tempCanvas.width = this.width;
     tempCanvas.height = this.height;
-    const tempCtx = tempCanvas.getContext("2d");
+    const tempCtx = tempCanvas.getContext('2d');
 
     if (!tempCtx) {
-      console.error("Could not create temporary canvas context");
+      console.error('Could not create temporary canvas context');
       return;
     }
 
@@ -159,8 +140,8 @@ export class VirtualCanvas extends VCCore {
       }
     }
 
-    const link = document.createElement("a");
-    link.download = `${filename}.${type === "image/png" ? "png" : "jpg"}`;
+    const link = document.createElement('a');
+    link.download = `${filename}.${type === 'image/png' ? 'png' : 'jpg'}`;
     link.href = tempCanvas.toDataURL(type, quality);
     document.body.appendChild(link);
     link.click();

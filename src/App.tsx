@@ -15,6 +15,7 @@ export default function App() {
     new VirtualCanvas(FULL_WIDTH, FULL_HEIGHT, 500)
   );
   const containerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -24,23 +25,19 @@ export default function App() {
     const displayCtx = displayCanvas.getContext("2d");
     if (!displayCtx || !virtualCanvas || !container) return;
     const handleScroll = (e: Event) => {
-      virtualCanvas.renderTo({
-        context: displayCtx,
-        viewportX: container.scrollLeft,
-        viewportY: container.scrollTop,
-        viewportWidth: VIEWPORT_WIDTH,
-        viewportHeight: VIEWPORT_HEIGHT,
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        virtualCanvas.renderTo({
+          context: displayCtx,
+          viewportX: container.scrollLeft,
+          viewportY: container.scrollTop,
+          viewportWidth: VIEWPORT_WIDTH,
+          viewportHeight: VIEWPORT_HEIGHT,
+        });
       });
     };
     container.addEventListener("scroll", handleScroll);
 
-    // virtualCanvas.draw((ctx) => {
-    //   ctx.fillStyle = "blue";
-    //   ctx.fillRect(0, 0, 50, 600);
-
-    //   ctx.fillStyle = "red";
-    //   ctx.fillRect(150, 700, 200, 600);
-    // });
     const lineFn = d3
       .line<number[]>()
       .x((d) => d[1])
